@@ -1,7 +1,9 @@
 #include "exec.h"
 #include "utils.h"
 #include "stdbool.h"
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 // sets the "key" argument with the key part of
 // the "arg" argument and null-terminates it
 static void get_environ_key(char* arg, char* key) {
@@ -48,7 +50,6 @@ static void set_environ_vars(char** eargv, int eargc) {
 // 	to make it a readable normal file
 static int open_redir_fd(char* file) {
 
-	// Your code here
 	return -1;
 }
 
@@ -89,8 +90,58 @@ void exec_cmd(struct cmd* cmd) {
 			// changes the input/output/stderr flow
 			//
 			// Your code here
-			printf("Redirections are not yet implemented\n");
-			_exit(-1);
+            struct execcmd* e;
+            int result;
+            int fd_out = -1, fd_in = -1, fd_err= -1;
+			e = (struct execcmd*)cmd;  
+      
+            if (strlen(e->out_file) != 0){
+
+                fd_out = open(e->out_file, O_CREAT|O_TRUNC|O_WRONLY, S_IRWXU|S_IRWXG);
+                if (fd_out == -1){
+                    printf("Couldn't open the file!: %s\n", strerror(errno));
+                    _exit(1);
+                }
+                dup2(fd_out, 1);
+            }
+
+            if (strlen(e->in_file) != 0){
+                fd_in = open(e->in_file, O_RDONLY, S_IRWXU|S_IRWXG);
+                if (fd_in == -1){
+                    printf("Couldn't open the file!: %s\n", strerror(errno));
+                    _exit(1);
+                }
+                dup2(fd_in, 0);                
+            }
+
+            if (strlen(e->err_file) != 0){
+                fd_err = open(e->err_file, O_CREAT|O_TRUNC|O_WRONLY, S_IRWXU|S_IRWXG);
+                if (fd_err == -1){
+                    printf("Couldn't open the file!: %s\n", strerror(errno));
+                    _exit(1);
+                }
+                dup2(fd_err, 2);
+            }
+            result = execvp(e->argv[0], e->argv);
+
+            if (fd_out != -1){
+                close(fd_out);
+                close(1);
+            }
+            if (fd_in != -1){
+                close(fd_in);
+                close(0);
+            }
+            if (fd_err != -1){
+                close(fd_err);
+                close(2);
+            }
+
+            if (result == -1){
+                printf("Couldn't execute the program!: %s\n", strerror(errno));
+                _exit(1);
+            }
+			exit(0);
 			break;
 		}
 		
@@ -107,4 +158,3 @@ void exec_cmd(struct cmd* cmd) {
 		}
 	}
 }
-
