@@ -96,8 +96,14 @@ void exec_cmd(struct cmd* cmd) {
 			e = (struct execcmd*)cmd;  
       
             if (strlen(e->out_file) != 0){
-
-                fd_out = open(e->out_file, O_CREAT|O_TRUNC|O_WRONLY, S_IRWXU|S_IRWXG);
+               
+                int mode = S_IRWXU|S_IRWXG;
+                if (e->out_file[0] == '>'){ //operador >>
+                    fd_out = open(e->out_file+1, O_CREAT|O_APPEND|O_WRONLY, mode);
+                }
+                else{
+                    fd_out = open(e->out_file, O_CREAT|O_TRUNC|O_WRONLY, mode);
+                }
                 if (fd_out == -1){
                     printf("Couldn't open the file!: %s\n", strerror(errno));
                     _exit(1);
