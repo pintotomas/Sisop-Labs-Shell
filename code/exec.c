@@ -115,15 +115,29 @@ void exec_cmd(struct cmd* cmd) {
             }
 
             if (strlen(e->err_file) != 0){
-                fd_err = open(e->err_file, O_CREAT|O_TRUNC|O_WRONLY, S_IRWXU|S_IRWXG);
-                if (fd_err == -1){
-                    printf("Couldn't open the file!: %s\n", strerror(errno));
-                    _exit(1);
+                printf("Trueeee");
+                bool set = false;
+
+                if (e->err_file[0] == '&'){
+                    //Para que funcione 2>&1
+                    fd_err = ((int)e->err_file[1]) - 48;
+                    if ((fd_err == 1) && (strlen(e->out_file) != 0)){
+                        dup2(fileno(stdout),fileno(stderr));
+                        set = true;
+                    }
                 }
-                dup2(fd_err, 2);
+                else{
+                    fd_err = open(e->err_file, O_CREAT|O_TRUNC|O_WRONLY, S_IRWXU|S_IRWXG);
+                    if (fd_err == -1){
+                        printf("Couldn't open the file!: %s\n", strerror(errno));
+                        _exit(1);
+                    }
+                    if (!set){
+                        dup2(fd_err, 2);
+                    }
+                }
             }
             result = execvp(e->argv[0], e->argv);
-
             if (fd_out != -1){
                 close(fd_out);
                 close(1);
