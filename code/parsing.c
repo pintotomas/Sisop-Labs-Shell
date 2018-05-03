@@ -25,14 +25,24 @@ static bool parse_redir_flow(struct execcmd* c, char* arg) {
 	// flow redirection for output
 	if ((outIdx = block_contains(arg, '>')) >= 0) {
 		switch (outIdx) {
+
 			// stdout redir
 			case 0: {
 				strcpy(c->out_file, arg + 1);
 				break;
 			}
 			// stderr redir
-			case 1: {
-				strcpy(c->err_file, &arg[outIdx + 1]);
+            //CHALLANGE: operador &>
+            //Si > se encuentra en segundo lugar,
+            // puede ser por el operador &> o el operador 2>
+			case 1: { 
+                if (arg[outIdx - 1] == '2'){
+				    strcpy(c->err_file, &arg[outIdx + 1]);
+                    }
+                else if(arg[outIdx - 1] == '&'){
+                    strcpy(c->err_file, &arg[outIdx + 1]);
+                    strcpy(c->out_file, arg + 1);
+                }
 				break;
 			}
 		}
@@ -181,10 +191,22 @@ static struct cmd* parse_cmd(char* buf_cmd) {
 	// checks if the background symbol is after
 	// a redir symbol, in which case
 	// it does not have to run in in the 'back'
+
+    //CHALLANGE: operador &>
+
+    //also check if the background symbol is not
+    //followed by a redir symbol, in which case 
+    //it does not have to run in the 'back'
+
 	if ((idx = block_contains(buf_cmd, '&')) >= 0 &&
-			buf_cmd[idx - 1] != '>')
-		return parse_back(buf_cmd);
-		
+			buf_cmd[idx - 1] != '>'){
+        if ( (idx != strlen(buf_cmd)) && (buf_cmd[idx + 1] != '>')){
+
+        	return parse_back(buf_cmd);
+        }
+    }
+
+    
 	return parse_exec(buf_cmd);
 }
 
@@ -201,4 +223,3 @@ struct cmd* parse_line(char* buf) {
 	
 	return pipe_cmd_create(l, r);
 }
-
