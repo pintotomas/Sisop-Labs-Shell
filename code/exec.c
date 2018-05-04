@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 // sets the "key" argument with the key part of
 // the "arg" argument and null-terminates it
 static void get_environ_key(char* arg, char* key) {
@@ -162,8 +163,49 @@ void exec_cmd(struct cmd* cmd) {
 			// pipes two commands
 			//
 			// Your code here
-			printf("Pipes are not yet implemented\n");
-				
+		    int pipefd[2];
+            pid_t cpid;
+            int status = 0;
+            struct pipecmd* cmd_p = (struct pipecmd*)cmd;
+            if (pipe(pipefd) == -1) {
+               printf("pipe error: %s\n", strerror(errno));
+               exit(EXIT_FAILURE);
+           }
+
+           cpid = fork();
+           if (cpid == -1) {
+               printf("fork error:: %s\n", strerror(errno));
+               exit(EXIT_FAILURE);
+           }
+
+           if (cpid == 0) {    /* Child reads from pipe */
+               close(pipefd[0]);
+			   if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+					printf("pipe dup2: %s\n", strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+               
+               exec_cmd(cmd_p->leftcmd);
+               
+               _exit(EXIT_SUCCESS);
+           } 
+           else {            
+
+               //No es necesario un waitpid() ya que la lectura del pipe 
+               //bloquea al proceso de manera automatica si intenta leer
+               //del pipe y este aun no ha sido escrito
+
+               close(pipefd[1]);          /* Reader will see EOF */
+               if (dup2(pipefd[0], STDIN_FILENO) == -1) {
+					printf("pipe dup2: %s\n", strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+               
+               exec_cmd(cmd_p->rightcmd);
+
+               exit(EXIT_SUCCESS);
+           }
+
 			// free the memory allocated
 			// for the pipe tree structure
 			free_command(parsed_pipe);
